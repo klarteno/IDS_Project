@@ -1,14 +1,6 @@
 # Imports
 import torch
-import torchvision
 import torch.nn as nn 
-import torch.optim as optim  
-import torch.nn.functional as F  
-from torch.utils.data import (
-    DataLoader,
-) 
-import torchvision.datasets as datasets  
-import torchvision.transforms as transforms  
 
 import tqdm
 import numpy as np
@@ -64,9 +56,7 @@ class CNN_BILSTM(nn.Module):
     def forward(self, inputs, hidden=None):        
         
         # Run through CNN net: (batch_size x input_size x seq_len) 
-        
         inputs1=inputs.unsqueeze(2)
-
         
         out1 = self.cv1(inputs1)
         assert not torch.isnan(out1).any()
@@ -115,7 +105,6 @@ class CNN_BILSTM(nn.Module):
         
     def initialize_weights(self):
         for m in self.modules():
-            # bug :Conv1d should be added next trainning  time
             if isinstance(m, nn.Linear):
                 nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
 
@@ -125,5 +114,99 @@ class CNN_BILSTM(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)    
+
+
+
+
+import time
+
+
+losses = []
+accuracy = []
+
+def get_stats():
+    return losses, accuracy 
+
+def train_CNN_BILSTM_Model(cnn_bilstm_model, optimizer, trainloader,MAX_EPOCHS):    
+    
+    # Loss and Optimizer
+    criterion = nn.CrossEntropyLoss() 
+
+    cnn_bilstm_model.to(DEVICE)
+    cnn_bilstm_model.train()
+
+    for epoch in range(MAX_EPOCHS):
+        timestart = time.time()
+        correct = 0
+        
+        tickstep = 0
+        for step, (batch_x, batch_y) in enumerate(tqdm.tqdm(trainloader),0):            
+
+            batch_x, batch_y = batch_x.to(DEVICE), batch_y.to(DEVICE)
+            
+            outputs = cnn_bilstm_model(batch_x)
+            assert not torch.isnan(outputs).any()
+            
+            loss = criterion(outputs, batch_y.long())  
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+    
+    
+            _loss = np.around(loss.item(), decimals=3)
+    
+            losses.append(_loss)
+
+            _, predicted = torch.max(outputs.data, 1)
+            correct = (predicted == batch_y).sum().item()
+            
+            accuracy.append(100.0 * correct / batch_y.size(0))
+                    
+        print('epoch %d cost %3f sec' %(epoch, time.time()-timestart))
+    print('Finished Training')
+    return losses, accuracy
+
+
+
+def test_CNN_BILSTM_model(model, test_loader):
+    
+    model.to(DEVICE)
+    model.eval()    #torch.nn.Module.train() -> Sets the module in evaluation mode.
+
+    test_loss = 0
+    correct = 0
+    for step, (batch_x, batch_y) in enumerate(tqdm.tqdm(test_loader),0):
+        # send to device
+        data, target = batch_x.float().to(DEVICE), batch_y.long().to(DEVICE)
+
+        outputs = model(data)
+
+        assert not torch.isnan(outputs).any()
+
+        loss_fn = torch.nn.CrossEntropyLoss(reduction='sum')
+        loss_fn = loss_fn.to(DEVICE)
+
+        loss = loss_fn(outputs, target)
+        test_loss += loss.detach().cpu()
+        # print(test_loss)
+        # test_loss += nn.CrossEntropyLoss(output, target, reduction='sum').item() # sum up batch loss                                                               
+
+        pred = outputs.data.max(1, keepdim=True)[1] # get the index of the max log-probability                                                                 
+        correct += pred.eq(target.data.view_as(pred)).cpu().sum().item()
+
+    test_loss /= len(test_loader.dataset)
+    accuracy = 100. * correct / len(test_loader.dataset)
+#    accuracy_list.append(accuracy)
+#    loss_list.append(test_loss)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        accuracy))
+    return accuracy
+
+
+
+
 
 

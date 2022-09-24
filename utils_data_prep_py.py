@@ -1,184 +1,183 @@
 import torch
 import numpy as np
 import pandas as pd
-import sys
 import os
 
-from torchvision.transforms import ToTensor
 
-import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import Dataset,DataLoader
-
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelEncoder #, OneHotEncoder
+import pickle
+from pprint import pprint
+
+print(os.getcwd())
+
+# os.chdir('./Users/bredsoby')
 
 
 
-if torch.cuda.is_available():
-   torch.cuda.empty_cache() 
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-print('DEVICE: ', DEVICE) 
+# loads the whole datasets ,the code will run slowly
+def _load_datasets(load_78_features = True, n_rows=None):
+    # Load 78 features
+    if load_78_features is True:   
+        # read  500 rows for testing
+        X_train__78_features = pd.read_csv('datasets/X_train_78_features_sampled.csv', nrows=n_rows)
+        if len(X_train__78_features.columns) == 79: # Check the files loaded because extra columns gets added
+            X_train__78_features = X_train__78_features.drop(columns='Unnamed: 0')
+        print('X_train__78_features', X_train__78_features.shape)
 
-import random, torch, os, numpy as np
+        X_test__78_features = pd.read_csv('datasets/X_test_78_features.csv', nrows=n_rows)
+        if len(X_test__78_features.columns) == 79:
+            X_test__78_features = X_test__78_features.drop(columns='Unnamed: 0')
+        print('X_test__78_features', X_test__78_features.shape)
 
+        # max_rows=500,
+        Y_train_binary__78_features = np.loadtxt('datasets/y_train_binary_78_features_sampled.csv',max_rows=n_rows, delimiter=',')
+        print('Y_train_binary__78_features', Y_train_binary__78_features.shape)
+        print(pd.DataFrame(Y_train_binary__78_features).value_counts())
 
-
-
-def seed_everything(seed=42):
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-seed_everything()
-
-
-
-
-# Store All CSV Filenames in the Dataset in an Array
-csv_files = []
-for dirname, _, filenames in os.walk('C:/Users/androgo/Documents/Python Scripts/IDS/CICIDS2017_notebooks/IDS_Project/datasets/MachineLearningCSV/MachineLearningCVE'):
-  # yelds a 3-tuple (dirpath, (sub)dirnmes, filenames)
-    for filename in filenames:
-        csv_file = os.path.join(dirname, filename)
-        csv_files.append(csv_file)
-
-
+        Y_test__binary = np.loadtxt('datasets/y_test_binary.csv',max_rows=n_rows, delimiter=',')
+        print('Y_test_binary', Y_test__binary.shape)
         
+        return X_train__78_features, X_test__78_features, Y_train_binary__78_features, Y_test__binary
+
+    # Load 23 features
+    if load_78_features is False:
+
+        X_train__23_features = pd.read_csv('datasets/X_train_23_features_sampled.csv', nrows=n_rows)
+        if len(X_train__23_features.columns) == 24:
+            X_train__23_features = X_train__23_features.drop(columns='Unnamed: 0')
+        print('X_train__23_features', X_train__23_features.shape)
+
+        X_test__23_features = pd.read_csv('datasets/X_test_23_features.csv', nrows=n_rows)
+        if len(X_test__23_features.columns) == 24:
+            X_test__23_features = X_test__23_features.drop(columns='Unnamed: 0')
+        print('X_test__23_features', X_test__23_features.shape)
+
+
+        Y_train_binary__23_features = np.loadtxt('datasets/y_train_binary_23_features_sampled.csv',max_rows=n_rows, delimiter=',')
         
-week_data = pd.concat([pd.read_csv(file) for file in csv_files], ignore_index=True)
+        print('y_train_binary__23_features', Y_train_binary__23_features.shape)
+        pprint(pd.DataFrame(Y_train_binary__23_features).value_counts())
+
+        Y_test__binary = np.loadtxt('datasets/y_test_binary.csv',max_rows=n_rows, delimiter=',')
+        print('Y_test__binary',Y_test__binary.shape)
+
+        return X_train__23_features, X_test__23_features, Y_train_binary__23_features, Y_test__binary
+
+load_78_features = True
+
+def load_datasets(load_for_testing=False, n_rows=None):
+    if load_for_testing:
+        
+        X_train, X_test, Y_train, Y_test = _load_datasets(load_78_features = load_78_features, n_rows=n_rows)
+        #when Y datasets are loaded in small amount we get zeros because zeros are majority
+        #print('is zero: ', np.all((Y_train == 0)))
+        #to get around this we generate some Y data   
+        Y_train = np.random.randint(0,15, size=n_rows)
+        Y_test = np.random.randint(0,15, size=n_rows)
+        
+        le = LabelEncoder()       # Encode target labels with value between 0 and n_classes-1
+        Y_train_binary = le.fit_transform(Y_train)
+        Y_test_binary = le.transform(Y_test)
+        labels_dict = dict(zip(le.classes_, range(len(le.classes_))))
+
+    else:
+        X_train, X_test, Y_train, Y_test = _load_datasets(load_78_features = load_78_features, n_rows=None)
+        labels_dict = pickle.load(open("datasets/labels_dict_file.pkl", 'rb'))
+        
+    return X_train, X_test, Y_train_binary, Y_test_binary, labels_dict
+
+#load_for_testing: load a small part of the dataset for testing,debuging the code
+X_train, X_test, Y_train, Y_test, labels_dict = load_datasets(load_for_testing = True, n_rows=500)
 
 
-
-week_data.columns = week_data.columns.str.strip()
-week_data.replace([np.inf, -np.inf],  np.nan, inplace=True)  # replace -infinity and+infinity with NaN
-week_data.dropna(inplace=True)    #remove missing values
-# print("Length of week_data after droping null values:", len(week_data))
-
-
-
-y = week_data.Label
-X = week_data.drop(columns='Label')
-class_labels = y.unique()
-num_classes = y.nunique()     # number of unique values
-print("shape of X: ",X.shape)
-print("number of labels of y: ", num_classes)
-print("Class labels: ", class_labels)
-print()
-
-
-
-
-selected_features = ["Bwd Packet Length Min", "Subflow Fwd Bytes", "Total Length of Fwd Packets", "Fwd Packet Length Mean", "Bwd Packet Length Std", "Flow IAT Min", "Fwd IAT Min", "Flow IAT Mean", "Flow Duration", "Flow IAT Std", "Init_Win_bytes_forward", "Active Min", "Active Mean", "Bwd Packets/s", "Bwd IAT Mean", "Fwd IAT Mean", "ACK Flag Count", "Fwd PSH Flags", "SYN Flag Count", "Fwd Packets/s", "Init_Win_bytes_backward", "PSH Flag Count", "Average Packet Size"]
-X_select = X[np.intersect1d(X.columns, selected_features)]
-
-
-
-X_train, X_test, y_train, y_test = train_test_split(X_select, y, random_state=99, stratify=y)
-print("\n After spliting the data:")
-print("training data shape:", X_train.shape)
-print("test data shape:", X_test.shape)
-print("training data shape:", y_train.shape)
-print("test data shape:", y_test.shape)
-
-
-
-le = LabelEncoder()       # Encode target labels with value between 0 and n_classes-1
-y_train_binary = le.fit_transform(y_train)
-#print("instances per label in test set\n", y_test_binary.value_counts())
-# transform -	Transform labels to normalized encoding.
-y_test_binary = le.transform(y_test)
-#we use fit_transform() on training data but transform() on the test data
-
-# classes_ - ndarray of shape (n_classes,) - Holds the label for each class.
-# To create a dictionary from two sequences, use dict(zip(keys, values))
-# The zip(fields, values) method returns an iterator that generates two-items tuples 
-labels_dict = dict(zip(le.classes_, range(len(le.classes_))))
-
-
-
-
-X_train_sampled = pd.read_csv('datasets/X_train_sampled_23_features.csv')
-y_train_binary_sampled = np.loadtxt('datasets/y_train_binary_sampled_23_features.csv', delimiter=',')
-
-
-# Check the files loaded because extra columns gets added
-# if  len(X_train_sampled.columns)==79:  
-if  len(X_train_sampled.columns) == 24:
-    X_train_sampled['Unnamed: 0']  
-    X_train_sampled = X_train_sampled.drop(columns='Unnamed: 0')
-    
-
-
-
-scaler = MinMaxScaler()
 # scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train_sampled)
-X_test = scaler.transform(X_test)    
+scaler = MinMaxScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test.to_numpy())
+
+
 
 
 class SecurityDataset(torch.utils.data.Dataset):
-
-  def __init__(self, X_train, y_train_binary):
+  def __init__(self, X_train, y_train, transform=torch.tensor, target_transform=torch.tensor):
+    self.X_train = torch.tensor(X_train, dtype = torch.float32)
+    self.Y_train = torch.tensor(y_train)  
     
-    self.X_train = torch.tensor(X_train, dtype = torch.float32).clone().detach()
-    self.Y_train = torch.tensor(y_train_binary).clone().detach()
+    self.transform = transform
+    self.target_transform = target_transform
+    
+    if self.transform:
+        self.X_train = self.transform(X_train, dtype=torch.float32)
+    if self.target_transform:
+        self.Y_train = self.target_transform(y_train, dtype=torch.int64)
 
   def __len__(self):
     return len(self.Y_train)
   
   def __getitem__(self, index):
-    return self.X_train[index], self.Y_train[index]
-  
-  
-  
-train_dataset = SecurityDataset(torch.tensor(X_train_sampled.values), y_train_binary_sampled)
-test_dataset = SecurityDataset(X_test, y_test_binary)  
+    feature = torch.index_select(self.X_train, 0, torch.tensor([index]))
+    label = torch.index_select(self.Y_train, 0, torch.tensor([index]))
+    
+    return feature, label 
 
 
-### Class Weights
+
+train_dataset = SecurityDataset(X_train, Y_train)
+test_dataset = SecurityDataset(X_test, Y_test)
+
+
+
+
 from sklearn.utils import class_weight
 
+
 classes_y = np.array(list(labels_dict.values()))
+print('classes_y: ',classes_y)
 #calculate the class weights
 class_weights = class_weight.compute_class_weight(class_weight = 'balanced',
                                                  classes = classes_y, # np.unique(y_train_binary),
-                                                 y = y_train_binary_sampled)
-classes_class_weights = dict(zip(classes_y, class_weights))
+                                                 y = Y_train)
+print('class_weights: ',class_weights)
+print()
+# class_weights.round(decimals=3, out=None)
 class_weights = np.around(class_weights, decimals=3)
+classes_class_weights = dict(zip(classes_y, class_weights))
+print('classes_class_weights: ')
+pprint(classes_class_weights)
 
 
 
-##### Apply WeightedRandomSampler only to train data and leave test or validate data untouched because is treated as unseen
 weights_sampler = 1. / class_weights
 sample_weights = [0] * len(train_dataset)
 # weights_sampler =np.around(weights_sampler, decimals=5)
 for idx, (data, label) in enumerate(train_dataset):
         class_weight = class_weights[ int(label.item()) ]
-        sample_weights[idx] = class_weight   
+        sample_weights[idx] = class_weight       
 sampler = torch.utils.data.WeightedRandomSampler(sample_weights, num_samples=
                                     len(sample_weights), replacement=True)
 
 
 
+
+batch_size = 32
+# use num_workers declared when the code is run on the cloud and it runs faster
+train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, sampler=sampler, drop_last=True, num_workers=os.cpu_count())
+test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=os.cpu_count())                                  
+
+# use without num_workers declared when the code is run loccaly(on laptop) because it gives errors
+train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, sampler=sampler, drop_last=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True)                                  
+
+
+
+
 def get_input_size():
     return X_train.shape[1]
-  
+
 def get_number_of_classes():
-    return num_classes
-
-def get_dataloaders(batch_size = 32):
-    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, sampler=sampler, drop_last=True)
-    test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True)
+    return len(labels_dict)
     
-    
+def get_dataloaders():
     return train_loader,test_loader
-
-
