@@ -36,20 +36,36 @@ test_loader = utils_data_load.test_loader
 input_size = (utils_data_load.X_train).shape[1]
 number_of_classes = len(utils_data_load.labels_dict)
 
+import models
+import neural_net_model_train
+
+import os
+
+
+def createFolder(path:str):
+    if not os.path.exists(path):
+        # Create a new directory because it does not exist 
+        os.makedirs(path)
+        
+    else:
+        #empty files when a new tunning starts
+        for file in os.scandir(path):
+            os.remove(file.path)   
 
 
 def start_optimize_objective(
     study: optuna.Study,
     args,
-    models_interface,
-    models_trainning,
+    path_models_id,
+    models_interface:models.CnnBirnnModel,
+    models_trainning:neural_net_model_train.ModelsTrainning
 ):
 
     max_epochs = args["max_epochs"]
     evaluation_function = args["evaluation_function"]
     no_trials = args["no_trials"]
     USE_AUTOMATIC_MIXED_PRECISION = args["USE_AUTOMATIC_MIXED_PRECISION"]
-
+    
     # Define a set of hyperparameter values, build the model, train the model, and evaluate the accuracy
     def objective(trial: optuna.Trial):
         accuracies, losses, f1_scores, auroc_scores = [0], [0], [0], [0]
@@ -95,7 +111,7 @@ def start_optimize_objective(
             if not prunned_trial:
                 # save trained model and continue trainning if network model is fine
                 checkpoint = models_trainning.getModelCheckpoint_AmpOptimized()
-                models_interface.saveModel(checkpoint, trial.number, evaluation_function)
+                models_interface.saveModel(checkpoint, path_models_id, trial.number)
 
             prunned_trial = False
 
@@ -112,7 +128,7 @@ def start_optimize_objective(
             if not prunned_trial:
                 # save trained model and continue trainning if network model is fine
                 checkpoint = models_trainning.getModelCheckpoint()
-                models_interface.saveModel(checkpoint, trial.number, evaluation_function)
+                models_interface.saveModel(checkpoint, path_models_id, trial.number)
 
             prunned_trial = False
 

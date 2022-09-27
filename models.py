@@ -13,12 +13,13 @@ if torch.cuda.is_available():
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+
 class ModelsInterface:
     def define_model(self, trial: optuna.Trial):
         print("ModelsInterface define_model")
 
-    def saveModel(self, checkpoint: dict, path: str):
-        print("ModelsInterface saveModel")
+    def saveModel(self, checkpoint: dict, path_models_id:str, number: int):
+        torch.save(checkpoint, path_models_id + str(number))      
 
     def empty_models(self, path):
         print("ModelsInterface empty_models")
@@ -125,14 +126,6 @@ class MlpModel(ModelsInterface):
         mlp_model.apply(self._weights_init)
 
         return mlp_model
-
-    def saveModel(self, checkpoint: dict, number: int, evaluation_function:str):
-        torch.save(checkpoint, "models\mlp\\"+ evaluation_function+ "\mlp_" + str(number))
-
-    def empty_models(self, evaluation_function:str):
-        path = "models\mlp\\"+ evaluation_function
-        for file in os.scandir(path):
-            os.remove(file.path)
 
 
 class CnnBirnnModel(ModelsInterface):
@@ -308,23 +301,3 @@ class CnnBirnnModel(ModelsInterface):
         cnn_bilstm_model.apply(self._weights_init)
 
         return cnn_bilstm_model
-
-
-    def saveModel(self, checkpoint: dict, number: int, evaluation_function:str):
-        if self.args["use_gru_instead_of_lstm"]:
-            # Save checkpoint 
-            torch.save(checkpoint, "models\gru\\" + evaluation_function + "\cnn_bi" + "_gru_" + str(number))
-            # torch.save(checkpoint, "models\gru\cnn_bi" + "_gru_" + str(number))
-        else:
-            #torch.save(checkpoint, "models\lstm\cnn_bi" + "_lstm_" + str(number))
-            torch.save(checkpoint, "models\lstm\\" + evaluation_function + "\cnn_bi" + "_lstm_" + str(number))
-
-    def empty_models(self,evaluation_function:str):
-        if self.args["use_gru_instead_of_lstm"]:
-            path = "models\gru\\" + evaluation_function
-            for file in os.scandir(path):
-                os.remove(file.path)
-        else:
-            path = "models\lstm\\" + evaluation_function
-            for file in os.scandir(path):
-                os.remove(file.path)
