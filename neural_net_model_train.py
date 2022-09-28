@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 
 import torchmetrics
-import statistics
 
-import tqdm
+#from tqdm import tqdm
+from tqdm.auto import tqdm
+#from tqdm.notebook import tqdm
+
 import numpy as np
 
 import os, random
@@ -45,6 +47,8 @@ class ModelsEvaluations:
         self.auroc_scores = []
         self.auroc = torchmetrics.AUROC(num_classes=number_of_classes).to(DEVICE)
         
+        self.mean_metric = torchmetrics.MeanMetric(nan_strategy="warn")
+
         
     def updateEvaluationEpochStep(self, outputs_res, batch_y):
         self.accuracy.update(outputs_res, batch_y.to(dtype=torch.int32))
@@ -73,6 +77,13 @@ class ModelsEvaluations:
         self.accuracies_scores = []    
         self.f1_scores = []
         self.auroc_scores = []
+
+    def computeMean(self, values):
+        self.mean_metric.update(values)
+        mean_value = self.mean_metric.compute()
+        self.mean_metric.reset()
+
+        return mean_value    
 
 
 class ModelsTrainning:
@@ -121,7 +132,7 @@ class ModelsTrainning:
                 if self.trial_optimisation.should_prune():
                     raise optuna.exceptions.TrialPruned()
             else:
-                print("test_evaluation_function unknown")
+                 print("test_evaluation_function unknown")
 
     def get_evaluation_result(self,accuracy_score,loss_score,f1_score):
         if self.evaluation_function == "accuracy":
@@ -150,8 +161,7 @@ class ModelsTrainning:
         net_model.train()
 
         for epoch in range(MAX_EPOCHS):
-            for step, (batch_x, batch_y) in enumerate(tqdm.tqdm(trainloader), 0):
-
+            for step, (batch_x, batch_y) in enumerate(tqdm(trainloader, position=0, leave=True), 0):
                 batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
                     DEVICE, non_blocking=True
                 )
@@ -171,7 +181,8 @@ class ModelsTrainning:
 
             _accuracy_epoch,  _f1_score_epoch, _auroc_score_epoch = self.modelsEvaluations.getEvaluationEpoch()
            
-            _losses_epoch = statistics.fmean(losses_epoch)
+           
+            _losses_epoch = self.modelsEvaluations.computeMean(losses_epoch)
             losses_epoch=[]
             
             # Add prune mechanism
@@ -221,7 +232,8 @@ class ModelsTrainning:
 
         for epoch in range(MAX_EPOCHS):
 
-            for step, (batch_x, batch_y) in enumerate(tqdm.tqdm(trainloader), 0):
+            for step, (batch_x, batch_y) in enumerate(tqdm(trainloader, position=0, leave=True), 0):
+
                 batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
                     DEVICE, non_blocking=True
                 )
@@ -242,8 +254,8 @@ class ModelsTrainning:
                 self.modelsEvaluations.updateEvaluationEpochStep(outputs_res, batch_y)
 
             _accuracy_epoch,  _f1_score_epoch, _auroc_score_epoch = self.modelsEvaluations.getEvaluationEpoch()
-
-            _losses_epoch = statistics.fmean(losses_epoch)
+            
+            _losses_epoch = self.modelsEvaluations.computeMean(losses_epoch)
             losses_epoch=[]
             
             # Add prune mechanism
@@ -270,7 +282,8 @@ class ModelsTrainning:
 
         losses_epoch = []
 
-        for step, (batch_x, batch_y) in enumerate(tqdm.tqdm(test_loader), 0):
+        for step, (batch_x, batch_y) in enumerate(tqdm(test_loader, position=0, leave=True), 0):
+
             # send to device
             batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
                 DEVICE, non_blocking=True
@@ -286,8 +299,10 @@ class ModelsTrainning:
 
             
         self.modelsEvaluations.getEvaluationEpoch()
-        loss_score = statistics.fmean(losses_epoch)
-
+        
+        loss_score = self.modelsEvaluations.computeMean(losses_epoch)
+        losses_epoch=[]
+        
         accuracies_scores, f1_scores, auroc_scores = self.modelsEvaluations.getEvaluationModelTrainning()
         self.modelsEvaluations.reset() 
         

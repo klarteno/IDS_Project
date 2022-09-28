@@ -21,9 +21,6 @@ class ModelsInterface:
     def saveModel(self, checkpoint: dict, path_models_id:str, number: int):
         torch.save(checkpoint, path_models_id + str(number))      
 
-    def empty_models(self, path):
-        print("ModelsInterface empty_models")
-
 
 def _check_layer_output(layer, input_shape):
     _summary = summary(layer, input_size=input_shape)
@@ -107,7 +104,7 @@ class MlpModel(ModelsInterface):
         setattr(mlp_model, "flat", nn.Flatten())
 
         for i in range(no_layers):
-            out_features = trial.suggest_int("n_units_l{}".format(i), 25, 257)
+            out_features = trial.suggest_int("n_units_l{}".format(i), 25, 256, step=3)
 
             lin_layer = nn.Linear(input_features, out_features)
             input_shape, output_size = _check_layer_output(lin_layer, input_shape)
@@ -116,7 +113,7 @@ class MlpModel(ModelsInterface):
             setattr(mlp_model, "bn" + str(i + 1), nn.BatchNorm1d(out_features))
             setattr(mlp_model, "lrel" + str(i + 1), nn.LeakyReLU())
 
-            drop_procentages = trial.suggest_float("dropout_l{}".format(i), 0.1, 0.5)
+            drop_procentages = trial.suggest_float("dropout_l{}".format(i), 0.1, 0.5, log=True)
             setattr(mlp_model, "drop" + str(i + 1), nn.Dropout(drop_procentages))
 
             input_features = out_features
@@ -159,7 +156,7 @@ class CnnBirnnModel(ModelsInterface):
         input_features = input_shape[1] 
 
 
-        no_layers = trial.suggest_int("n_layers", 2, 7)
+        no_layers = trial.suggest_int("n_layers", 2, 9)
 
         # to be optimized by optuna or no because the hidden size is big?
         rnn_stacked_layers = 2
@@ -234,8 +231,8 @@ class CnnBirnnModel(ModelsInterface):
 
         for i in range(no_layers):
 
-            out_features = trial.suggest_int("n_units_l{}".format(i), 25, 257)
-            no_strides = trial.suggest_int("no_strides_l{}".format(i), 1, 7)
+            out_features = trial.suggest_int("n_units_l{}".format(i), 25, 256, step=3)
+            no_strides = trial.suggest_int("no_strides_l{}".format(i), 1, 7, step=2)
 
             conv_layer = nn.Conv1d(
                 input_features, out_features, kernel_size=kernel_size, stride=no_strides,bias=False
@@ -263,7 +260,7 @@ class CnnBirnnModel(ModelsInterface):
 
         setattr(cnn_bilstm_model, "hidden_size_lstm", input_features * 2)
 
-        drop_procentages = trial.suggest_float("dropout_l{}".format(i), 0.1, 0.5)
+        drop_procentages = trial.suggest_float("dropout_l{}".format(i), 0.1, 0.5, log=True)
 
         if use_gru_instead_of_lstm:
             setattr(

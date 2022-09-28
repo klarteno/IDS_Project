@@ -18,6 +18,13 @@ print(os.getcwd())
 
 # os.chdir('./Users/bredsoby')
 
+# Load data with 78 
+# The data with 78 features takes very long to train on Colab an locally
+#load_78_features = True
+# Load data with  23 features
+load_78_features = False
+
+
 
 # loads the whole datasets ,the code will run slowly
 def _load_datasets(load_78_features=True, n_rows=None):
@@ -97,10 +104,7 @@ def _load_datasets(load_78_features=True, n_rows=None):
             X_test__23_features,
             Y_train_binary__23_features,
             Y_test__binary,
-        )
-
-
-load_78_features = True
+        )       
 
 
 def load_datasets(load_for_testing=False, n_rows=None):
@@ -109,6 +113,7 @@ def load_datasets(load_for_testing=False, n_rows=None):
         X_train, X_test, Y_train, Y_test = _load_datasets(
             load_78_features=load_78_features, n_rows=n_rows
         )
+        
         # when Y datasets are loaded in small amount we get zeros because zeros are majority
         # print('is zero: ', np.all((Y_train == 0)))
         # to get around this we generate some Y data
@@ -119,6 +124,8 @@ def load_datasets(load_for_testing=False, n_rows=None):
         Y_train_binary = le.fit_transform(Y_train)
         Y_test_binary = le.transform(Y_test)
         labels_dict = dict(zip(le.classes_, range(len(le.classes_))))
+    
+        return X_train, X_test, Y_train_binary, Y_test_binary, labels_dict
 
     else:
         X_train, X_test, Y_train, Y_test = _load_datasets(
@@ -126,13 +133,14 @@ def load_datasets(load_for_testing=False, n_rows=None):
         )
         labels_dict = pickle.load(open("datasets/labels_dict_file.pkl", "rb"))
 
-    return X_train, X_test, Y_train_binary, Y_test_binary, labels_dict
+        return X_train, X_test, Y_train, Y_test, labels_dict
 
 
 # load_for_testing: load a small part of the dataset for testing,debuging the code
-X_train, X_test, Y_train, Y_test, labels_dict = load_datasets(
-    load_for_testing=True, n_rows=1500
-)
+X_train, X_test, Y_train, Y_test, labels_dict = load_datasets(load_for_testing=True, n_rows=1500)
+
+# load the whole datasets available
+# X_train, X_test, Y_train, Y_test, labels_dict  = load_datasets()
 
 
 # scaler = StandardScaler()
@@ -219,12 +227,8 @@ test_loader = DataLoader(
 )
 
 # use without num_workers declared when the code is run loccaly(on laptop) because it gives errors
-train_loader = DataLoader(
-    dataset=train_dataset, batch_size=batch_size, sampler=sampler, drop_last=True
-)
-test_loader = DataLoader(
-    dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True
-)
+train_loader = DataLoader( dataset=train_dataset, batch_size=batch_size, sampler=sampler, drop_last=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
 
 def get_input_size():
