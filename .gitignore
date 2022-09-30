@@ -1,7 +1,7 @@
 #switch off datasets folder because is big
 datasets/
-models/
-best_optimized_models/
+#models/
+#best_optimized_models/
 toDel/
 utils//toDel/
 
