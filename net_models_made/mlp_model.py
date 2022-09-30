@@ -13,7 +13,7 @@ BATCH_SIZE = 32
 num_groups = 4 
 
 class MLP_Model(nn.Module):
-    def __init__(self, inputSize, numClasses, hidden1Size=128, hidden2Size=128):
+    def __init__(self, inputSize, numClasses):
         super(MLP_Model, self).__init__()
         
         self.fltn = nn.Flatten()
@@ -89,7 +89,7 @@ class MLP_Model(nn.Module):
         
         out5 = self.fc5(out4)
         assert not torch.isnan(out5).any()
-        # print('-----------------------------')
+        
         # out = self.logsm(out)
         
         return out

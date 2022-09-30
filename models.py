@@ -23,7 +23,7 @@ class ModelsInterface:
 
 
 def _check_layer_output(layer, input_shape):
-    _summary = summary(layer, input_size=input_shape)
+    _summary = summary(layer, input_size=input_shape,device=DEVICE)
     input_shape = _summary.summary_list[0].output_size
 
     return input_shape, input_shape[-1]
@@ -61,7 +61,7 @@ class MlpModel(ModelsInterface):
         def init_func(self):
             super(NetModel, self).__init__()
             
-        @torch.cuda.amp.autocast()
+        # @torch.cuda.amp.autocast()
         def forward_func(self, inputs, no_layers=no_layers):
             outputs = getattr(self, f"flat")(inputs)
 
@@ -156,7 +156,7 @@ class CnnBirnnModel(ModelsInterface):
         input_features = input_shape[1] 
 
 
-        no_layers = trial.suggest_int("n_layers", 2, 9)
+        no_layers = trial.suggest_int("n_layers", 2, 4)
 
         # to be optimized by optuna or no because the hidden size is big?
         rnn_stacked_layers = 2
@@ -164,7 +164,7 @@ class CnnBirnnModel(ModelsInterface):
         def init_func(self):
             super(NetModel, self).__init__()
 
-        @torch.cuda.amp.autocast()
+        # @torch.cuda.amp.autocast()
         def forward_func(self, inputs, no_layers=no_layers):
             outputs = inputs
 
@@ -231,7 +231,7 @@ class CnnBirnnModel(ModelsInterface):
 
         for i in range(no_layers):
 
-            out_features = trial.suggest_int("n_units_l{}".format(i), 25, 256, step=3)
+            out_features = trial.suggest_int("n_units_l{}".format(i), 25, 88, step=3)
             no_strides = trial.suggest_int("no_strides_l{}".format(i), 1, 7, step=2)
 
             conv_layer = nn.Conv1d(

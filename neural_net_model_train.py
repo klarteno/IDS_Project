@@ -29,9 +29,9 @@ def seed_everything(seed=42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.enabled = True
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
-
 
 seed_everything()
 
@@ -88,21 +88,23 @@ class ModelsEvaluations:
 
 class ModelsTrainning:
     
-    def setParameters(
-        self,
-        mlp_model: nn.Module,
-        optimizer,
-        train_loader: torch.utils.data.DataLoader,
+    def __init__(self, train_loader: torch.utils.data.DataLoader,
         test_loader: torch.utils.data.DataLoader,
-        max_epochs,
-        trial_optimisation=None,
-        evaluation_function=None,
-    ):
-        self.net_model = mlp_model
-        self.optimizer = optimizer
+        max_epochs):
+        
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.max_epochs = max_epochs
+    
+    def setParameters(
+        self,
+        net_model: nn.Module,
+        optimizer,
+        trial_optimisation=None,
+        evaluation_function=None,
+    ):
+        self.net_model = net_model
+        self.optimizer = optimizer
         self.trial_optimisation = trial_optimisation
         self.evaluation_function = evaluation_function
         
@@ -147,9 +149,6 @@ class ModelsTrainning:
 
     def trainNetModel(self):
 
-        net_model = self.net_model
-        optimizer = self.optimizer
-        trainloader = self.train_loader
         MAX_EPOCHS = self.max_epochs
 
         criterion = nn.CrossEntropyLoss().to(DEVICE)
@@ -157,23 +156,23 @@ class ModelsTrainning:
         losses = []
         losses_epoch = []
 
-        net_model.to(DEVICE)
-        net_model.train()
+        self.net_model.to(DEVICE)
+        self.net_model.train()
 
         for epoch in range(MAX_EPOCHS):
-            for step, (batch_x, batch_y) in enumerate(tqdm(trainloader, position=0, leave=True), 0):
+            for step, (batch_x, batch_y) in enumerate(tqdm(self.train_loader, position=0, leave=True), 0):
                 batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
                     DEVICE, non_blocking=True
                 )
 
-                outputs_res = net_model(batch_x)
+                outputs_res = self.net_model(batch_x)
                 # assert not torch.isnan(outputs_res).any()
 
                 loss = criterion(outputs_res, batch_y.long())
 
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
 
                 losses_epoch.append(np.around(loss.item(), decimals=3))
                 
@@ -217,9 +216,6 @@ class ModelsTrainning:
         # Necessary for FP16
         self.scaler = scaler = torch.cuda.amp.GradScaler()
 
-        net_model = self.net_model
-        optimizer = self.optimizer
-        trainloader = self.train_loader
         MAX_EPOCHS = self.max_epochs
 
         criterion = nn.CrossEntropyLoss().to(DEVICE)
@@ -227,26 +223,26 @@ class ModelsTrainning:
         losses = []
         losses_epoch = []
 
-        net_model.to(DEVICE)
-        net_model.train()
+        self.net_model.to(DEVICE)
+        self.net_model.train()
 
         for epoch in range(MAX_EPOCHS):
 
-            for step, (batch_x, batch_y) in enumerate(tqdm(trainloader, position=0, leave=True), 0):
+            for step, (batch_x, batch_y) in enumerate(tqdm(self.train_loader, position=0, leave=True), 0):
 
                 batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
                     DEVICE, non_blocking=True
                 )
 
                 with torch.cuda.amp.autocast():
-                    outputs_res = net_model(batch_x)
+                    outputs_res = self.net_model(batch_x)
                     # assert not torch.isnan(outputs_res).any()
                     loss = criterion(outputs_res, batch_y.to(dtype=torch.long))
 
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
                 scaler.scale(loss).backward()
-                scaler.step(optimizer)
+                scaler.step(self.optimizer)
                 scaler.update()
 
                 losses_epoch.append(np.around(loss.item(), decimals=3))
@@ -272,24 +268,22 @@ class ModelsTrainning:
 
 
     def testNetModel(self):
-        net_model = self.net_model
-        test_loader = self.test_loader
 
         criterion = torch.nn.CrossEntropyLoss().to(DEVICE)
 
-        net_model.to(DEVICE)
-        net_model.eval()
+        self.net_model.to(DEVICE)
+        self.net_model.eval()
 
         losses_epoch = []
 
-        for step, (batch_x, batch_y) in enumerate(tqdm(test_loader, position=0, leave=True), 0):
+        for step, (batch_x, batch_y) in enumerate(tqdm(self.test_loader, position=0, leave=True), 0):
 
             # send to device
             batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
                 DEVICE, non_blocking=True
             )
 
-            outputs_res = net_model(batch_x)
+            outputs_res = self.net_model(batch_x)
             # assert not torch.isnan(outputs).any()
             loss = criterion(outputs_res, batch_y.long())
 
@@ -309,10 +303,48 @@ class ModelsTrainning:
         
         print(
             "\nTest set: Average loss: {:.4f}, Average accuracy: {:.4f}%,\n \t  Average f1_score: {:.4f}, Average Area Under ROC: {:.4f} \n".format(
-                loss_score, accuracies_scores[0], f1_scores[0] , auroc_scores[0]
+                loss_score.item(), accuracies_scores[0].item(), f1_scores[0].item() , auroc_scores[0].item()
             )
         )
-
+        
         return self.get_evaluation_result(accuracies_scores[0],
                                           loss_score,
                                           f1_scores[0])
+
+
+
+def testNetModel(net_model, test_loader, modelsEvaluations = ModelsEvaluations()):
+
+    criterion = torch.nn.CrossEntropyLoss().to(DEVICE)
+
+    net_model.to(DEVICE)
+    net_model.eval()
+
+    losses_epoch = []
+
+    for step, (batch_x, batch_y) in enumerate(tqdm(test_loader, position=0, leave=True), 0):
+
+        # send to device
+        batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
+            DEVICE, non_blocking=True
+        )
+
+        outputs_res = net_model(batch_x)
+        # assert not torch.isnan(outputs).any()
+        loss = criterion(outputs_res, batch_y.long())
+
+        losses_epoch.append(np.around(loss.item(), decimals=3))
+        
+        modelsEvaluations.updateEvaluationEpochStep(outputs_res, batch_y)
+
+    modelsEvaluations.getEvaluationEpoch()
+    
+    loss_score = modelsEvaluations.computeMean(losses_epoch)
+    losses_epoch=[]
+    
+    accuracies_scores, f1_scores, auroc_scores = modelsEvaluations.getEvaluationModelTrainning()
+    modelsEvaluations.reset() 
+
+    return loss_score.item(), accuracies_scores[0].item(), f1_scores[0].item() , auroc_scores[0].item()
+    
+    

@@ -140,7 +140,7 @@ def load_datasets(load_for_testing=False, n_rows=None):
 X_train, X_test, Y_train, Y_test, labels_dict = load_datasets(load_for_testing=True, n_rows=1500)
 
 # load the whole datasets available
-# X_train, X_test, Y_train, Y_test, labels_dict  = load_datasets()
+#X_train, X_test, Y_train, Y_test, labels_dict  = load_datasets()
 
 
 # scaler = StandardScaler()
@@ -209,7 +209,7 @@ sampler = torch.utils.data.WeightedRandomSampler(
 
 batch_size = 32
 # use num_workers declared when the code is run on the cloud and it runs faster
-train_loader = DataLoader(
+'''train_loader = DataLoader(
     dataset=train_dataset,
     batch_size=batch_size,
     sampler=sampler,
@@ -225,10 +225,11 @@ test_loader = DataLoader(
     num_workers=os.cpu_count(),
     pin_memory=True
 )
+'''
 
 # use without num_workers declared when the code is run loccaly(on laptop) because it gives errors
-train_loader = DataLoader( dataset=train_dataset, batch_size=batch_size, sampler=sampler, drop_last=True)
-test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+train_loader = DataLoader( dataset=train_dataset, batch_size=batch_size, sampler=sampler, drop_last=True, pin_memory=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True, pin_memory=True)
 
 
 def get_input_size():

@@ -81,9 +81,7 @@ class CNN_BILSTM(nn.Module):
         out = self.gn4(out4)
         out = self.rel4(out)
         out = self.p4(out)
-        
-        batch_size = inputs.size(0)
-        
+                
         # make data as (seq_len x batch_size x hidden_size) for RNN
         # out = out.transpose(1, 2).transpose(0, 1)
         
@@ -205,55 +203,3 @@ def test_CNN_BILSTM_model(model, test_loader):
         accuracy))
     return accuracy
 
-
-
-
-
-
-
-
-NetModel(
-  (cv1): Conv1d(1, 155, kernel_size=(3,), stride=(1,))
-  (avgp1): AvgPool1d(kernel_size=(3,), stride=(1,), padding=(0,))
-  (bn1): BatchNorm1d(155, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-  (lrel1): LeakyReLU(negative_slope=0.01)
-  (cv2): Conv1d(155, 28, kernel_size=(3,), stride=(1,))
-  (avgp2): AvgPool1d(kernel_size=(3,), stride=(1,), padding=(0,))
-  (bn2): BatchNorm1d(28, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-  (lrel2): LeakyReLU(negative_slope=0.01)
-  (cv3): Conv1d(28, 215, kernel_size=(3,), stride=(2,))
-  (avgp3): AvgPool1d(kernel_size=(3,), stride=(2,), padding=(0,))
-  (bn3): BatchNorm1d(215, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-  (lrel3): LeakyReLU(negative_slope=0.01)
-  (bi_gru): GRU(215, 430, num_layers=2, batch_first=True, dropout=0.3244344290483554, bidirectional=True)
-  (fc_output): Linear(in_features=860, out_features=15, bias=True)
-)
-
-
-NetModel(
-  (cv1): Conv1d(1, 72, kernel_size=(3,), stride=(6,))
-  (avgp1): AvgPool1d(kernel_size=(3,), stride=(6,), padding=(0,))
-  (bn1): BatchNorm1d(72, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-  (lrel1): LeakyReLU(negative_slope=0.01)
-  (cv2): Conv1d(72, 155, kernel_size=(1,), stride=(1,))
-  (avgp2): AvgPool1d(kernel_size=(1,), stride=(1,), padding=(0,))
-  (bn2): BatchNorm1d(155, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-  (lrel2): LeakyReLU(negative_slope=0.01)
-  (bi_gru): GRU(155, 310, num_layers=2, batch_first=True, dropout=0.37852846569954823, bidirectional=True)
-  (fc_output): Linear(in_features=620, out_features=15, bias=True)
-)
-
-
-
-NetModel(
-  (cv1): Conv1d(1, 107, kernel_size=(3,), stride=(1,))
-  (avgp1): AvgPool1d(kernel_size=(3,), stride=(1,), padding=(0,))
-  (bn1): BatchNorm1d(107, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-  (lrel1): LeakyReLU(negative_slope=0.01)
-  (cv2): Conv1d(107, 85, kernel_size=(3,), stride=(4,))
-  (avgp2): AvgPool1d(kernel_size=(3,), stride=(4,), padding=(0,))
-  (bn2): BatchNorm1d(85, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-  (lrel2): LeakyReLU(negative_slope=0.01)
-  (bi_gru): GRU(85, 170, num_layers=2, batch_first=True, dropout=0.4615719620156013, bidirectional=True)
-  (fc_output): Linear(in_features=340, out_features=15, bias=True)
-)

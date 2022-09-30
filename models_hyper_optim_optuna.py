@@ -1,39 +1,9 @@
-""" 
-¤ in colab:
-
-!pip install optuna
-!pip install import_ipynb
-!pip install torchmetrics
-
-"""
-
-""" 
-¤ in azure:
-
-conda install -c conda-forge --y optuna 
-conda install -c conda-forge --y torchmetrics
-"""
-
-""" 
-¤ in colab:
-
-from google.colab import drive
-drive.mount('/content/drive', force_remount=True)
-%cd '/content/drive/My Drive/Colab Notebooks/IDS_Project'
-"""
 
 import optuna
 import torchmetrics
+
+import torch
 import torch.optim as optim
-
-
-import utils_data_load
-
-train_loader = utils_data_load.train_loader
-test_loader = utils_data_load.test_loader
-
-input_size = (utils_data_load.X_train).shape[1]
-number_of_classes = len(utils_data_load.labels_dict)
 
 import models
 import neural_net_model_train
@@ -58,16 +28,28 @@ def computeMean(values, mean_metric=torchmetrics.MeanMetric(nan_strategy="warn")
 
     return mean_value
 
+def print_optimization_results(study:optuna.study.study.Study, args_trial):
+    print("Number of finished trials: {}".format(len(study.trials)))
+    print("Best trial:")
+    print('number of the best trial: ',study.best_trial.number)
+    best_trial = study.best_trial
+    print("  Value: {}".format(best_trial.value))
+    print("  Params: ")
+    for key, value in best_trial.params.items():
+        print("    {}: {}".format(key, value))
+        
+    print("  Evaluation function: {}".format(args_trial['evaluation_function']))
+
+
 
 def start_optimize_objective(
     study: optuna.Study,
     args,
     path_models_id,
-    models_interface: models.CnnBirnnModel,
+    models_interface: models.ModelsInterface,
     models_trainning: neural_net_model_train.ModelsTrainning,
 ):
 
-    max_epochs = args["max_epochs"]
     evaluation_function = args["evaluation_function"]
     no_trials = args["no_trials"]
     USE_AUTOMATIC_MIXED_PRECISION = args["USE_AUTOMATIC_MIXED_PRECISION"]
@@ -97,9 +79,6 @@ def start_optimize_objective(
         models_trainning.setParameters(
             net_model,
             optimizer,
-            train_loader,
-            test_loader,
-            max_epochs,
             trial_optimisation=trial,
             evaluation_function=evaluation_function,
         )
@@ -156,9 +135,20 @@ def start_optimize_objective(
             )
         )
 
+        # turn off because of RNN :https://github.com/pytorch/captum/issues/564 , https://github.com/pytorch/captum/pull/576
+        torch.backends.cudnn.enabled = False
         test_evaluation_function = models_trainning.testNetModel()
+        torch.backends.cudnn.enabled = True
+        
+        net_model=None
 
         return test_evaluation_function
 
     study.optimize(objective, n_trials=no_trials)
-    #study.optimize(objective, timeout=5 * 60 * 60)
+    #when is ruuning on cpu: n_jobs is 2 or more the training fails with errors
+    #study.optimize(objective ,timeout = 5 * 60 * 60)
+    
+    
+
+
+    
