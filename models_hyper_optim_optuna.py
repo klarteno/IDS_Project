@@ -126,10 +126,11 @@ def start_optimize_objective(
 
             prunned_trial = False
 
+        # the evaluation are scaled between 0 and 1
         print(
             "\nTrain set: Average loss: {:.4f}, Average accuracy: {:.4f}%,\n \t Average f1_score: {:.4f}, Average Area Under ROC: {:.4f} \n".format(
-                computeMean(accuracies),
                 computeMean(losses),
+                computeMean(accuracies),
                 computeMean(f1_scores),
                 computeMean(auroc_scores),
             )
