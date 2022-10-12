@@ -12,8 +12,6 @@ import neural_net_models.models_params as models_params
 
 import utils.utils as utils
 
-dataInputParams: models_params.DataInputParams = None
-
 
 def start_optimize_objective(
     study: optuna.Study,
@@ -34,22 +32,33 @@ def start_optimize_objective(
         print(repr(net_model))
         # print(type(mlp_model))
         # print(dir(mlp_model))
-
+        # torch.Cuda.max_memory_allocated()
         params = {
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True),
             "optimizer": trial.suggest_categorical(
-                "optimizer", ["Adam", "RMSprop", "SGD"]
+                "optimizer", ["RAdam", "AdamW", "NAdam"]
             ),
-        }
-
+            
+            "scheduler_iterations_restart": trial.suggest_int(
+                "scheduler_iterations_restart",low=models_ops.dataInputParams.batch_size*20, high=models_ops.dataInputParams.batch_size*30,log=True
+            ),
+            
+            "scheduler_minimum_learning_rate": trial.suggest_float("scheduler_minimum_learning_rate", 1e-5, 9e-1, log=True),
+            
+        }    
         # Generate the optimizers.
         optimizer = getattr(optim, params["optimizer"])(
             net_model.parameters(), lr=params["learning_rate"]
         )
 
+        scheduler_learning:torch.optim.lr_scheduler._LRScheduler = getattr(torch.optim.lr_scheduler, "CosineAnnealingWarmRestarts")(
+            optimizer=optimizer, T_0 = params["scheduler_iterations_restart"], eta_min = params["scheduler_minimum_learning_rate"]
+        )
+        
         models_trainning.setParameters(
             net_model,
             optimizer,
+            scheduler_learning,
             trial_optimisation=trial
         )
 
@@ -75,9 +84,9 @@ def start_optimize_objective(
         multi_class_accuracies = models_trainning.get_multi_class_accuracies()
         accuracy_trainning,f1_score_trainning,auroc_trainning = models_trainning.get_evaluations_score()
         
-        print("Train set multi class accuracies: ", multi_class_accuracies)        
+        print("\nTrain set multi class accuracies: ", multi_class_accuracies)        
         print(
-            "\nTrain set: Average loss: {:.4f}, Average accuracy: {:.4f}%,\n \t  Average f1_score: {:.4f}%, Average Area Under ROC: {:.4f} \n".format(
+            "Train set: Average loss: {:.4f}, Average accuracy: {:.4f}%,\n \t  Average f1_score: {:.4f}%, Average Area Under ROC: {:.4f} \n".format(
                 utils.computeMean(losses),
                 accuracy_trainning,
                 f1_score_trainning,

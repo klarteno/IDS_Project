@@ -50,19 +50,26 @@ class ModelsEvaluations:
     def __init__(self):
         # average='weighted' is for handling imbalanced balanced dataset 
         self.device_for_metrics = "cpu"
+        kwargs = {'compute_on_cpu': True} #if use_cuda else {}
         self.multi_class_accuracies_trainning = []
-        self.multi_accuracy_epoch = classification.MulticlassAccuracy(num_classes=number_of_classes, average=None, multidim_average='global',compute_on_cpu=True).to(self.device_for_metrics)
+        self.multi_accuracy_epoch = classification.MulticlassAccuracy(num_classes=number_of_classes, average=None, multidim_average='global',**kwargs).to(self.device_for_metrics)
 
         self.accuracies_trainning = []
-        self.accuracy_epoch = torchmetrics.Accuracy(num_classes=number_of_classes, average='weighted', multidim_average='global',compute_on_cpu=True).to(self.device_for_metrics)
+        self.accuracy_epoch = torchmetrics.Accuracy(num_classes=number_of_classes, average='weighted', multidim_average='global',**kwargs).to(self.device_for_metrics)
 
         self.f1_scores_trainning = []
-        self.f1_score_epoch = torchmetrics.F1Score(num_classes=number_of_classes, average="weighted", compute_on_cpu=True).to(self.device_for_metrics)
+        self.f1_score_epoch = torchmetrics.F1Score(num_classes=number_of_classes, average="weighted", **kwargs).to(self.device_for_metrics)
 
         self.auroc_scores_trainning = []
-        self.auroc_epoch = torchmetrics.AUROC(num_classes=number_of_classes,average='weighted',compute_on_cpu=True).to(self.device_for_metrics)
+        self.auroc_epoch = torchmetrics.AUROC(num_classes=number_of_classes,average='weighted', **kwargs).to(self.device_for_metrics)
 
-        self.mean_metric = torchmetrics.MeanMetric(nan_strategy="warn").to(self.device_for_metrics)
+        self.mean_metric = torchmetrics.MeanMetric(nan_strategy="warn",**kwargs).to(self.device_for_metrics)
+        
+        self.scheduler_learning_history=[]
+        
+        self.accuracies_testset = []
+        self.accuracy_testset = torchmetrics.Accuracy(num_classes=number_of_classes, average='weighted', multidim_average='global',**kwargs).to(self.device_for_metrics)
+
 
     def update_evaluation_epoch(self, outputs_res:torch.Tensor, batch_y:torch.Tensor):
         with torch.no_grad():
@@ -120,7 +127,6 @@ class ModelsEvaluations:
 
     def get_all_evaluations(self):
          return self.accuracies_trainning , self.f1_scores_trainning, self.auroc_scores_trainning
-
     def reset_evaluations(self):
         self.accuracy_epoch.reset()
         self.f1_score_epoch.reset()
@@ -129,6 +135,14 @@ class ModelsEvaluations:
         self.accuracies_trainning = []        
         self.f1_scores_trainning = []
         self.auroc_scores_trainning = []
+        
+        self.scheduler_learning_history=[]
+        
+    def append_learning_rate(self, learning_rate):
+        self.scheduler_learning_history.extend(learning_rate)
+
+    def get_scheduler_learning_history(self):
+        return self.scheduler_learning_history
 
     def compute_mean(self, values:float|torch.Tensor):
         self.mean_metric.update(values)
@@ -161,10 +175,12 @@ class ModelsTrainning:
         self,
         net_model: nn.Module,
         optimizer,
+        scheduler_learning:torch.optim.lr_scheduler._LRScheduler,
         trial_optimisation:optuna.Trial=None 
         ):
         self.net_model = net_model
         self.optimizer = optimizer
+        self.scheduler_learning=scheduler_learning
         self.trial_optimisation = trial_optimisation
 
     def prune_trial(self, epoch:int,accuracy_epoch:float, losses_epoch:float, f1_score_epoch:float):
@@ -210,12 +226,14 @@ class ModelsTrainning:
             checkpoint = {
                 "model": self.net_model.state_dict(),
                 "optimizer": self.optimizer.state_dict(),
-                "scaler": self.scaler.state_dict(),
+                "scheduler_learning":self.scheduler_learning.state_dict(),
+                "scaler": self.scaler.state_dict()
             }
         else:
             checkpoint = {
                 "model": self.net_model.state_dict(),
                 "optimizer": self.optimizer.state_dict(),
+                "scheduler_learning":self.scheduler_learning.state_dict()
             }
         
         return checkpoint
@@ -232,6 +250,8 @@ class ModelsTrainning:
     def get_evaluations_score(self):
         return self.__modelsEvaluations.get_evaluations_score()
     
+    def get_scheduler_learning_history(self):
+        return self.__modelsEvaluations.get_scheduler_learning_history()
     
     def get_multi_class_accuracies(self):
         return self.__modelsEvaluations.get_multi_class_accuracies_trainning_score()
@@ -267,6 +287,11 @@ class ModelsTrainning:
 
                 losses_epoch.append(np.around(loss.item(), decimals=3))          
                 self.__modelsEvaluations.update_evaluation_epoch(outputs_res, batch_y)
+                
+            self.scheduler_learning.step()            
+            learning_rate = self.scheduler_learning.get_last_lr()
+            self.__modelsEvaluations.append_learning_rate(learning_rate)
+
 
             (   _accuracy_epoch,
                 _f1_score_epoch,
@@ -336,6 +361,10 @@ class ModelsTrainning:
                 _auroc_score_epoch,
             ) = self.__modelsEvaluations.get_evaluation_epoch()
 
+            self.scheduler_learning.step()            
+            learning_rate = self.scheduler_learning.get_last_lr()
+            self.__modelsEvaluations.append_learning_rate(learning_rate)
+
             _losses_epoch = self.__modelsEvaluations.compute_mean(losses_epoch)
             losses_epoch = []
 
@@ -363,30 +392,30 @@ class ModelsTrainning:
         self.net_model.eval()
 
         losses_epoch = []
-        
-        for step, (batch_x, batch_y) in enumerate(
-            tqdm(self.test_loader, position=0, leave=True), 0
-        ):
+        with torch.no_grad():
+            for step, (batch_x, batch_y) in enumerate(
+                tqdm(self.test_loader, position=0, leave=True), 0
+            ):
 
-            # send to device
-            batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
-                DEVICE, non_blocking=True
-            )
+                # send to device
+                batch_x, batch_y = batch_x.to(DEVICE, non_blocking=True), batch_y.to(
+                    DEVICE, non_blocking=True
+                )
 
-            outputs_res = self.net_model(batch_x)
-            # assert not torch.isnan(outputs).any()
-            loss = criterion(outputs_res, batch_y.long())
+                outputs_res = self.net_model(batch_x)
+                # assert not torch.isnan(outputs).any()
+                loss = criterion(outputs_res, batch_y.long())
 
-            losses_epoch.append(np.around(loss.item(), decimals=3))
-            self.__modelsEvaluations.update_evaluation_epoch(outputs_res, batch_y)
-        
-        self.__modelsEvaluations.get_evaluation_epoch()
-        (   accuracies_scores,
-            f1_scores,
-            auroc_scores,
-        ) = self.__modelsEvaluations.get_all_evaluations()
+                losses_epoch.append(np.around(loss.item(), decimals=3))
+                self.__modelsEvaluations.update_evaluation_epoch(outputs_res, batch_y)
+                
+            self.__modelsEvaluations.get_evaluation_epoch()
+            (   accuracies_scores,
+                f1_scores,
+                auroc_scores,
+            ) = self.__modelsEvaluations.get_all_evaluations()
 
-        losses_scores=losses_epoch
+            losses_scores=losses_epoch
         
         return  accuracies_scores, losses_scores, f1_scores, auroc_scores
 

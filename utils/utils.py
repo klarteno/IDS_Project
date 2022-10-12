@@ -8,7 +8,7 @@ import joblib
 
 from neural_net_models.models_params import ModelsNames
 
-def createFolder(path: str):
+def create_or_empty_folder(path: str):
     if not os.path.exists(path):
         # Create a new directory because it does not exist
         os.makedirs(path)
@@ -17,6 +17,11 @@ def createFolder(path: str):
         # empty files when a new tunning starts
         for file in os.scandir(path):
             os.remove(file.path)
+
+def create_foder(path):
+    if not os.path.exists(path):
+            # Create a new directory because it does not exist
+            os.makedirs(path)
 
 
 def saveModel(checkpoint: dict, path_models_id: str, number: int):

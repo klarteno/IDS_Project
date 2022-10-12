@@ -13,6 +13,7 @@ class TrialModelSettings:
         
         self.rnn_drop_procentages:str = "rnn_drop_procentages"
         
+        
     
     def set_model_params_from(self, trial: optuna.Trial, model_name:ModelsNames):
         

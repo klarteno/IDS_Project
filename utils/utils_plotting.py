@@ -1,9 +1,30 @@
 import numpy as np
-import os
 import torch
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
+
+
+def plot_scatter_values(data:list, label_y = 'data'):
+    plt.plot(data, color='blue', marker='o',mfc='black', linestyle='dashed', ) #plot the data
+    plt.xticks(range(0,len(data), 1)) #set the tick frequency on x-axis
+
+    plt.ylabel(label_y) #set the label for y axis
+    plt.xlabel('epochs') #set the label for x-axis
+    plt.title("Plotting "+label_y) #set the title of the graph
+    plt.show() #display the graph
+    
+
+# plot float values of the form : 0.0004 
+def plot_float_values(values, label_y = 'Scheduler learning history'):
+    import plotly.graph_objects as go
+    import plotly.io as pio
+    pio.renderers.default = 'notebook+jupyterlab'
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=list(range(0, len(values))), y=values, mode='lines+markers', name='lines+markers'))
+    fig.update_layout(title='Plot of '+label_y, xaxis_title='x', yaxis_title=label_y)
+    fig.show()
+    
+    
 
 def plot_trainning_eval(
     minibatch_losses,
@@ -155,45 +176,60 @@ def _plotEvaluationResults(
     loss_scores,
     f1_scores,
     auroc_scores,
-    max_epochs,
     label="MLP_ver1",
 ):
     plot_multiple_trainning_evals(
         evals_list=(accuracies_scores, loss_scores),
-        num_epochs=max_epochs,
+        num_epochs=len(accuracies_scores),
         custom_labels_list=(" --" + label + " Accuracies vs Losses", " --" + label + " Losses"),
     )
 
     plot_trainning_eval(
         accuracies_scores,
-        num_epochs=max_epochs,
+        num_epochs=len(accuracies_scores),
         type_plot="Accuracies",
         custom_label=" " + label,
     )
     plot_trainning_eval(
-        loss_scores, num_epochs=max_epochs, type_plot="Losses", custom_label=" " + label
+        loss_scores, num_epochs=len(loss_scores), type_plot="Losses", custom_label=" " + label
     )
 
     plot_trainning_eval(
         f1_scores,
-        num_epochs=max_epochs,
+        num_epochs=len(f1_scores),
         type_plot=" F1_Scores",
         custom_label=" " + label,
     )
     plot_trainning_eval(
         auroc_scores,
-        num_epochs=max_epochs,
+        num_epochs=len(auroc_scores),
         type_plot=" Auroc_Scores",
         custom_label=" " + label,
     )
 
 
+
+def _plotEvaluationResults2(
+    accuracies_scores,
+    loss_scores,
+    f1_scores,
+    auroc_scores
+):
+    plt.subplot(211)             # the first subplot in the first figure
+    plot_scatter_values(accuracies_scores, label_y = 'accuracies')
+    plt.subplot(212) 
+    plot_scatter_values(loss_scores, label_y = 'losses')
+    plt.subplot(211) 
+    plot_scatter_values(f1_scores, label_y = 'F1-scores')
+    plt.subplot(212) 
+    plot_scatter_values(auroc_scores, label_y = 'Auroc_scores')
+    
+    
 def plotEvaluationResults(
     accuracies_scores,
     loss_scores,
     f1_scores,
     auroc_scores,
-    max_epochs,
     label="MLP_ver1",
 ):
     if type(accuracies_scores[0]) is torch.Tensor:
@@ -208,6 +244,6 @@ def plotEvaluationResults(
     elif type(auroc_scores[0]) is torch.Tensor:  
         auroc_scores = transferTensorsToDevice(auroc_scores, device="cpu")
 
-    _plotEvaluationResults(
-        accuracies_scores, loss_scores, f1_scores, auroc_scores, max_epochs, label=label
+    _plotEvaluationResults2(
+        accuracies_scores, loss_scores, f1_scores, auroc_scores
     )
