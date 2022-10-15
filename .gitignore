@@ -2,8 +2,6 @@
 datasets/
 #models/
 #best_optimized_models/
-toDel/
-utils//toDel/
 draft.*
 
 # Byte-compiled / optimized / DLL files

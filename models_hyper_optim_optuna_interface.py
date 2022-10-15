@@ -80,8 +80,16 @@ def create_study_optimization(dataInputParams:models_params.DataInputParams, mod
     
     return study
 
+
+def set_base_clasifier(models_trainning:neural_net_model_train.ModelsTrainning):
+    models_ops = models.ModelsOps()
+
+    models_trainning.set_base_clasifier(models_ops.get_zero_rate_classifier_model())
+
+
 import torch.optim as optim
 from utils.utils_plotting import plot_float_values,plotEvaluationResults
+
 
 def train_best_model(best_trial: optuna.Trial, dataInputParams, model_name, models_trainning:neural_net_model_train.ModelsTrainning,path_checkpoint_save):
 
@@ -102,7 +110,7 @@ def train_best_model(best_trial: optuna.Trial, dataInputParams, model_name, mode
 
     # Generate the optimizers.
     optimizer = getattr(optim, best_trial.params["optimizer"])(
-        mlp_net_model.parameters(), lr=best_trial.params["learning_rate"]
+        mlp_net_model.parameters(), lr=best_trial.params["learning_rate"], weight_decay=best_trial.params["weight_decay"]
     )
 
     scheduler_learning:torch.optim.lr_scheduler._LRScheduler = getattr(torch.optim.lr_scheduler, "CosineAnnealingWarmRestarts")(
@@ -164,7 +172,6 @@ def test_best_model(models_trainning:neural_net_model_train.ModelsTrainning):
 
     print("Test multi class accuracies: ", multi_class_accuracies) 
     
-    from utils.utils_plotting import plot_trainning_eval
 
     plot_float_values(multi_class_accuracies, label_y = 'Multi class accuracies')
     plot_float_values(losses_scores, label_y = 'Losses scores')

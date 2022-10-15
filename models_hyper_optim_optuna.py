@@ -35,6 +35,9 @@ def start_optimize_objective(
         # torch.Cuda.max_memory_allocated()
         params = {
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True),
+            
+            "weight_decay" : trial.suggest_float("weight_decay", 0.01, 1.0, log=True),
+
             "optimizer": trial.suggest_categorical(
                 "optimizer", ["RAdam", "AdamW", "NAdam"]
             ),
@@ -48,7 +51,7 @@ def start_optimize_objective(
         }    
         # Generate the optimizers.
         optimizer = getattr(optim, params["optimizer"])(
-            net_model.parameters(), lr=params["learning_rate"]
+            net_model.parameters(), lr=params["learning_rate"], weight_decay=params["weight_decay"]
         )
 
         scheduler_learning:torch.optim.lr_scheduler._LRScheduler = getattr(torch.optim.lr_scheduler, "CosineAnnealingWarmRestarts")(

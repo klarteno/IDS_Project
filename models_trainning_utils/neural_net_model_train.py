@@ -1,3 +1,4 @@
+from pickle import TRUE
 from re import A
 import torch
 import torch.utils.data
@@ -51,6 +52,7 @@ class ModelsEvaluations:
         # average='weighted' is for handling imbalanced balanced dataset 
         self.device_for_metrics = "cpu"
         kwargs = {'compute_on_cpu': True} #if use_cuda else {}
+        
         self.multi_class_accuracies_trainning = []
         self.multi_accuracy_epoch = classification.MulticlassAccuracy(num_classes=number_of_classes, average=None, multidim_average='global',**kwargs).to(self.device_for_metrics)
 
@@ -127,16 +129,24 @@ class ModelsEvaluations:
 
     def get_all_evaluations(self):
          return self.accuracies_trainning , self.f1_scores_trainning, self.auroc_scores_trainning
+     
     def reset_evaluations(self):
         self.accuracy_epoch.reset()
         self.f1_score_epoch.reset()
         self.auroc_epoch.reset()
+          
         
         self.accuracies_trainning = []        
         self.f1_scores_trainning = []
         self.auroc_scores_trainning = []
         
+        self.mean_metric.reset()
+        
+        
         self.scheduler_learning_history=[]
+        
+        self.accuracies_testset = []
+        self.accuracy_testset.reset()
         
     def append_learning_rate(self, learning_rate):
         self.scheduler_learning_history.extend(learning_rate)
@@ -150,6 +160,7 @@ class ModelsEvaluations:
         self.mean_metric.reset()
 
         return mean_value
+
 
 
 class ModelsTrainning:
@@ -182,6 +193,12 @@ class ModelsTrainning:
         self.optimizer = optimizer
         self.scheduler_learning=scheduler_learning
         self.trial_optimisation = trial_optimisation
+
+
+    def set_base_clasifier(self, base_clasifier):
+        self.net_model = base_clasifier        
+        
+        
 
     def prune_trial(self, epoch:int,accuracy_epoch:float, losses_epoch:float, f1_score_epoch:float):
         import optuna
@@ -244,7 +261,7 @@ class ModelsTrainning:
         if self.USE_AUTOMATIC_MIXED_PRECISION:
             return self._trainNetModel_AmpOptimized()
         else:
-            return self._trainNetModel()
+                return self._trainNetModel()
             
     # has to be called after training or testing
     def get_evaluations_score(self):
@@ -259,7 +276,10 @@ class ModelsTrainning:
     def _trainNetModel(self):
 
         MAX_EPOCHS = self.max_epochs
+        
         self.__modelsEvaluations.reset_evaluations() 
+        self.__modelsEvaluations = ModelsEvaluations()
+
         criterion = nn.CrossEntropyLoss().to(DEVICE)
 
         losses = []
@@ -288,9 +308,9 @@ class ModelsTrainning:
                 losses_epoch.append(np.around(loss.item(), decimals=3))          
                 self.__modelsEvaluations.update_evaluation_epoch(outputs_res, batch_y)
                 
-            self.scheduler_learning.step()            
-            learning_rate = self.scheduler_learning.get_last_lr()
-            self.__modelsEvaluations.append_learning_rate(learning_rate)
+                self.scheduler_learning.step()            
+                learning_rate = self.scheduler_learning.get_last_lr()
+                self.__modelsEvaluations.append_learning_rate(learning_rate)
 
 
             (   _accuracy_epoch,
@@ -355,15 +375,17 @@ class ModelsTrainning:
                 losses_epoch.append(np.around(loss.item(), decimals=3))
 
                 self.__modelsEvaluations.update_evaluation_epoch(outputs_res, batch_y)
+                
+                self.scheduler_learning.step()            
+                learning_rate = self.scheduler_learning.get_last_lr()
+                self.__modelsEvaluations.append_learning_rate(learning_rate)
 
             (   _accuracy_epoch,
                 _f1_score_epoch,
                 _auroc_score_epoch,
             ) = self.__modelsEvaluations.get_evaluation_epoch()
 
-            self.scheduler_learning.step()            
-            learning_rate = self.scheduler_learning.get_last_lr()
-            self.__modelsEvaluations.append_learning_rate(learning_rate)
+                
 
             _losses_epoch = self.__modelsEvaluations.compute_mean(losses_epoch)
             losses_epoch = []
@@ -387,6 +409,7 @@ class ModelsTrainning:
 
         criterion = torch.nn.CrossEntropyLoss().to(DEVICE)
         self.__modelsEvaluations.reset_evaluations() 
+        self.__modelsEvaluations = ModelsEvaluations()
 
         self.net_model.to(DEVICE)
         self.net_model.eval()
@@ -403,6 +426,7 @@ class ModelsTrainning:
                 )
 
                 outputs_res = self.net_model(batch_x)
+                
                 # assert not torch.isnan(outputs).any()
                 loss = criterion(outputs_res, batch_y.long())
 
@@ -419,6 +443,7 @@ class ModelsTrainning:
         
         return  accuracies_scores, losses_scores, f1_scores, auroc_scores
 
+    
 
 def testNetModel123(net_model, test_loader, modelsEvaluations=ModelsEvaluations()):
 

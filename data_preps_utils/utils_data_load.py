@@ -143,11 +143,10 @@ X_train, X_test, Y_train, Y_test, labels_dict = load_datasets(load_for_testing=T
 # load the whole datasets available
 #X_train, X_test, Y_train, Y_test, labels_dict  = load_datasets()
 
-
 # scaler = StandardScaler()
 scaler = MinMaxScaler()
 X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test.to_numpy())
+X_test = scaler.transform(X_test.to_numpy(dtype=np.uint8))
 
 
 class SecurityDataset(torch.utils.data.Dataset):

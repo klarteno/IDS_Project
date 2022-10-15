@@ -21,9 +21,11 @@ class ModelsOps:
     def __init__(self):
         self.trialModelSettings = trial_model_settings.TrialModelSettings()
 
+
     def set_model_names(self, dataInputParams: models_params.DataInputParams, model_name:models_params.ModelsNames):
         self.model_name = model_name
         self.dataInputParams = dataInputParams
+        
         
     def define_model(self, trial: optuna.Trial) -> nn.Module:
         if self.model_name.value == models_params.ModelsNames.MLP.value:
@@ -38,6 +40,11 @@ class ModelsOps:
         else:
             raise NotImplementedError("Not implemented for other models")
 
+
+    def get_zero_rate_classifier_model(self) -> nn.Module:
+        return ZeroRateClassifier()
+
+
     def set_model_params(self, model_name:ModelsNames, args: dict):
         if self.model_name.value == models_params.ModelsNames.MLP.value:
             mlp_trial_params=self.trialModelSettings.set_model_params(model_name, args)
@@ -48,6 +55,7 @@ class ModelsOps:
             return cnn_birnn_trial_params, CnnBirnnModel(self.dataInputParams).define_model(cnn_birnn_trial_params, model_name)    
         else:
             raise NotImplementedError("Not implemented for other models")
+
 
 # TO DO: delete this class
 class ModelsInterface2:
@@ -75,6 +83,36 @@ def _check_nans(outputs):
         raise optuna.exceptions.TrialPruned()
 
 
+
+class  ZeroRateClassifier(nn.Module):
+    def __init__(self, most_frequent = torch.full((32, 15, 1), 0.0)):
+        super(ZeroRateClassifier, self).__init__()
+        
+        #code to use when weightedsampler is not used
+        '''
+        y_dtset = train_loader.dataset.Y_train
+        type(y_dtset)
+        max_elements, max_idxs = torch.min(y_dtset, dim=0)
+        print(max_elements.item(), max_idxs.item())
+        print(torch.mode(y_dtset, dim=-1, keepdim=True, out=None))
+
+        print(torch.bincount(y_dtset).size())
+        print(torch.bincount(y_dtset))
+
+
+        lst_bincount=torch.bincount(y_dtset)
+
+        max_elements, max_idxs = torch.max(lst_bincount, dim=0)
+        print(max_elements.item(), max_idxs.item())
+        sumsi = torch.sum(lst_bincount,dim=0,keepdim=True)
+        '''
+        
+        self.most_frequent=most_frequent.to(DEVICE)
+        
+    def forward(self, x_inputs) -> int:
+        return self.most_frequent
+        
+        
 class MlpModel():
     def __init__(self, dataInputParams: models_params.DataInputParams):
         self.dataInputParams=dataInputParams
