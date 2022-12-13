@@ -6,15 +6,16 @@ from typing import List, Type
 
 from enum import Enum, unique
 
+
 class ModelsNames(Enum):
     MLP = 1
     CNN_BI_LSTM = 2
-    CNN_BI_GRU = 3 
-    
+    CNN_BI_GRU = 3
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.value == other.value
-        
+
         return False
 
 
@@ -41,13 +42,15 @@ tp: Type[int] = int
 @dataclass
 class MlpTrialParams:
     number_layers: int = 0
-    
+
     _n_units_l = int
     _dropout_l = int
 
     # number_layers is the length of the list
     # use stack ops
-    stack_layers: List[tuple[_n_units_l, _dropout_l]] = field(default_factory=lambda: [])
+    stack_layers: List[tuple[_n_units_l, _dropout_l]] = field(
+        default_factory=lambda: []
+    )
 
 
 @dataclass
@@ -59,7 +62,9 @@ class CnnBiRnnTrialParams:
 
     # number_layers is the length of the list
     # use stack ops
-    stack_layers: List[tuple[_n_units_l, _no_strides_l]] = field(default_factory=lambda: [])
+    stack_layers: List[tuple[_n_units_l, _no_strides_l]] = field(
+        default_factory=lambda: []
+    )
 
     rnn_drop_procentages: float = 0.0
 
@@ -68,5 +73,3 @@ class CnnBiRnnTrialParams:
 
 _alias: Type[DataInputParams] = DataInputParams
 _alias = DataInputParams
-
-

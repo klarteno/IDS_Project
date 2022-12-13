@@ -7,7 +7,7 @@ from torchinfo import summary
 
 import models_params
 
-from  models_params import ModelsNames
+from models_params import ModelsNames
 
 import trial_model_settings
 
@@ -21,38 +21,56 @@ class ModelsOps:
     def __init__(self):
         self.trialModelSettings = trial_model_settings.TrialModelSettings()
 
-
-    def set_model_names(self, dataInputParams: models_params.DataInputParams, model_name:models_params.ModelsNames):
+    def set_model_names(
+        self,
+        dataInputParams: models_params.DataInputParams,
+        model_name: models_params.ModelsNames,
+    ):
         self.model_name = model_name
         self.dataInputParams = dataInputParams
-        
-        
+
     def define_model(self, trial: optuna.Trial) -> nn.Module:
         if self.model_name.value == models_params.ModelsNames.MLP.value:
-            mlp_trial_params = self.trialModelSettings.set_model_params_from(trial, self.model_name)
-            
+            mlp_trial_params = self.trialModelSettings.set_model_params_from(
+                trial, self.model_name
+            )
+
             return MlpModel(self.dataInputParams).define_model(mlp_trial_params)
-        
-        elif (self.model_name.value == models_params.ModelsNames.CNN_BI_LSTM.value) or (self.model_name.value == models_params.ModelsNames.CNN_BI_GRU.value):
-            cnn_birnn_trial_params = self.trialModelSettings.set_model_params_from(trial, self.model_name)
-            
-            return CnnBirnnModel(self.dataInputParams).define_model(cnn_birnn_trial_params, self.model_name)
+
+        elif (self.model_name.value == models_params.ModelsNames.CNN_BI_LSTM.value) or (
+            self.model_name.value == models_params.ModelsNames.CNN_BI_GRU.value
+        ):
+            cnn_birnn_trial_params = self.trialModelSettings.set_model_params_from(
+                trial, self.model_name
+            )
+
+            return CnnBirnnModel(self.dataInputParams).define_model(
+                cnn_birnn_trial_params, self.model_name
+            )
         else:
             raise NotImplementedError("Not implemented for other models")
-
 
     def get_zero_rate_classifier_model(self) -> nn.Module:
         return ZeroRateClassifier()
 
-
-    def set_model_params(self, model_name:ModelsNames, args: dict):
+    def set_model_params(self, model_name: ModelsNames, args: dict):
         if self.model_name.value == models_params.ModelsNames.MLP.value:
-            mlp_trial_params=self.trialModelSettings.set_model_params(model_name, args)
-            return  mlp_trial_params, MlpModel(self.dataInputParams).define_model(mlp_trial_params)  
-              
-        elif (self.model_name.value == models_params.ModelsNames.CNN_BI_LSTM.value) or (self.model_name.value == models_params.ModelsNames.CNN_BI_GRU.value):
-            cnn_birnn_trial_params = self.trialModelSettings.set_model_params(model_name, args)
-            return cnn_birnn_trial_params, CnnBirnnModel(self.dataInputParams).define_model(cnn_birnn_trial_params, model_name)    
+            mlp_trial_params = self.trialModelSettings.set_model_params(
+                model_name, args
+            )
+            return mlp_trial_params, MlpModel(self.dataInputParams).define_model(
+                mlp_trial_params
+            )
+
+        elif (self.model_name.value == models_params.ModelsNames.CNN_BI_LSTM.value) or (
+            self.model_name.value == models_params.ModelsNames.CNN_BI_GRU.value
+        ):
+            cnn_birnn_trial_params = self.trialModelSettings.set_model_params(
+                model_name, args
+            )
+            return cnn_birnn_trial_params, CnnBirnnModel(
+                self.dataInputParams
+            ).define_model(cnn_birnn_trial_params, model_name)
         else:
             raise NotImplementedError("Not implemented for other models")
 
@@ -60,15 +78,16 @@ class ModelsOps:
 # TO DO: delete this class
 class ModelsInterface2:
     def __init__(self, dataInputParams: models_params.DataInputParams):
-        self.number_of_classes:int = dataInputParams.number_of_classes
+        self.number_of_classes: int = dataInputParams.number_of_classes
         self.input_shape = dataInputParams.input_shape
         self.input_features = dataInputParams.input_features  # input_shape[2]
-        self.batch_size:int = dataInputParams.batch_size
+        self.batch_size: int = dataInputParams.batch_size
 
-    def define_model(self, trialParams:None) -> nn.Module:
+    def define_model(self, trialParams: None) -> nn.Module:
         print("ModelsInterface define_model")
-        
-        return None    
+
+        return None
+
 
 def _check_layer_output(layer, input_shape):
     _summary = summary(layer, input_size=input_shape, device=DEVICE)
@@ -83,13 +102,12 @@ def _check_nans(outputs):
         raise optuna.exceptions.TrialPruned()
 
 
-
-class  ZeroRateClassifier(nn.Module):
-    def __init__(self, most_frequent = torch.full((32, 15, 1), 0.0)):
+class ZeroRateClassifier(nn.Module):
+    def __init__(self, most_frequent=torch.full((32, 15, 1), 0.0)):
         super(ZeroRateClassifier, self).__init__()
-        
-        #code to use when weightedsampler is not used
-        '''
+
+        # code to use when weightedsampler is not used
+        """
         y_dtset = train_loader.dataset.Y_train
         type(y_dtset)
         max_elements, max_idxs = torch.min(y_dtset, dim=0)
@@ -105,18 +123,18 @@ class  ZeroRateClassifier(nn.Module):
         max_elements, max_idxs = torch.max(lst_bincount, dim=0)
         print(max_elements.item(), max_idxs.item())
         sumsi = torch.sum(lst_bincount,dim=0,keepdim=True)
-        '''
-        
-        self.most_frequent=most_frequent.to(DEVICE)
-        
+        """
+
+        self.most_frequent = most_frequent.to(DEVICE)
+
     def forward(self, x_inputs) -> int:
         return self.most_frequent
-        
-        
-class MlpModel():
+
+
+class MlpModel:
     def __init__(self, dataInputParams: models_params.DataInputParams):
-        self.dataInputParams=dataInputParams
-        
+        self.dataInputParams = dataInputParams
+
     def _weights_init(self, m):
         if isinstance(m, nn.Linear):
             torch.nn.init.kaiming_uniform_(m.weight.data, nonlinearity="leaky_relu")
@@ -127,13 +145,13 @@ class MlpModel():
             nn.init.constant_(m.bias.data, 0)
 
     # Build a model by providing model parameters
-    def define_model(self, mlp_trial_params:models_params.MlpTrialParams):
-        no_layers = mlp_trial_params.number_layers 
-        
+    def define_model(self, mlp_trial_params: models_params.MlpTrialParams):
+        no_layers = mlp_trial_params.number_layers
+
         def init_func(self):
             super(NetModel, self).__init__()
-           
-        dataInputParams=self.dataInputParams
+
+        dataInputParams = self.dataInputParams
         # @torch.cuda.amp.autocast()
         def forward_func(self, inputs, no_layers=no_layers):
             outputs = getattr(self, f"flat")(inputs)
@@ -150,11 +168,11 @@ class MlpModel():
 
             outputs = getattr(self, f"fc_output")(outputs)
             _check_nans(outputs)
-            
+
             outputs = outputs.view(dataInputParams.batch_size, -1)
-            linear_output = (nn.Linear(outputs.shape[1], dataInputParams.number_of_classes)).to(
-                DEVICE
-            )
+            linear_output = (
+                nn.Linear(outputs.shape[1], dataInputParams.number_of_classes)
+            ).to(DEVICE)
 
             # apply Linear to get shape of: (batch_size, number_of_classes)
             # the Linear is generated in this way to make the output fit the
@@ -167,9 +185,11 @@ class MlpModel():
             return outputs
 
         NetModel = type(
-            "NetModel", (nn.Module,),
+            "NetModel",
+            (nn.Module,),
             {
-                "__init__": init_func, "forward": forward_func,
+                "__init__": init_func,
+                "forward": forward_func,
             },
         )
         mlp_model: NetModel = NetModel()
@@ -177,10 +197,10 @@ class MlpModel():
         setattr(mlp_model, "flat", nn.Flatten())
 
         input_features = self.dataInputParams.input_features
-        input_shape     = self.dataInputParams.input_shape
-        
+        input_shape = self.dataInputParams.input_shape
+
         for i in range(mlp_trial_params.number_layers):
-            out_features, drop_procentages=mlp_trial_params.stack_layers[i]
+            out_features, drop_procentages = mlp_trial_params.stack_layers[i]
 
             lin_layer = nn.Linear(input_features, out_features)
             input_shape, output_size = _check_layer_output(lin_layer, input_shape)
@@ -191,17 +211,21 @@ class MlpModel():
             setattr(mlp_model, "drop" + str(i + 1), nn.Dropout(drop_procentages))
 
             input_features = out_features
-        
-        setattr(mlp_model, "fc_output", nn.Linear(input_features, self.dataInputParams.batch_size))
+
+        setattr(
+            mlp_model,
+            "fc_output",
+            nn.Linear(input_features, self.dataInputParams.batch_size),
+        )
         # mlp_model.apply(self._weights_init)
 
         return mlp_model.apply(self._weights_init)
 
 
-class CnnBirnnModel():
+class CnnBirnnModel:
     def __init__(self, dataInputParams: models_params.DataInputParams):
-        self.dataInputParams=dataInputParams
-        
+        self.dataInputParams = dataInputParams
+
     def _weights_init(self, m):
         if isinstance(m, nn.Conv1d):
             nn.init.kaiming_uniform_(m.weight.data, nonlinearity="leaky_relu")
@@ -219,18 +243,24 @@ class CnnBirnnModel():
     # https://www.kdnuggets.com/2018/09/dropout-convolutional-networks.html
 
     # Build a model by implementing define-by-run design from Optuna
-    def define_model(self, cnn_birnn_trial_params:models_params.CnnBiRnnTrialParams, model_name:models_params.ModelsNames):
-        
-        use_gru_instead_of_lstm = (model_name.value == models_params.ModelsNames.CNN_BI_GRU.value)
+    def define_model(
+        self,
+        cnn_birnn_trial_params: models_params.CnnBiRnnTrialParams,
+        model_name: models_params.ModelsNames,
+    ):
+
+        use_gru_instead_of_lstm = (
+            model_name.value == models_params.ModelsNames.CNN_BI_GRU.value
+        )
         no_layers = cnn_birnn_trial_params.number_layers
-        
+
         # to be optimized by optuna or no because the hidden size is big?
         rnn_stacked_layers = 2
 
         def init_func(self):
             super(NetModel, self).__init__()
 
-        dataInputParams=self.dataInputParams
+        dataInputParams = self.dataInputParams
         # @torch.cuda.amp.autocast()
         def forward_func(self, inputs, no_layers=no_layers):
             outputs = inputs
@@ -270,9 +300,9 @@ class CnnBirnnModel():
             _check_nans(outputs)
 
             outputs = outputs.view(dataInputParams.batch_size, -1)
-            linear_output = (nn.Linear(outputs.shape[1], dataInputParams.number_of_classes)).to(
-                DEVICE
-            )
+            linear_output = (
+                nn.Linear(outputs.shape[1], dataInputParams.number_of_classes)
+            ).to(DEVICE)
 
             # apply Linear to get shape of: (batch_size,number_of_classes)
             # the Linear is generated in this way to make the output fit the
@@ -300,11 +330,11 @@ class CnnBirnnModel():
         input_shape = self.dataInputParams.input_shape
         input_features = 1
         for i in range(no_layers):
-            
-            out_features, no_strides=cnn_birnn_trial_params.stack_layers[i]
+
+            out_features, no_strides = cnn_birnn_trial_params.stack_layers[i]
 
             conv_layer = nn.Conv1d(
-                #self.dataInputParams.input_features,
+                # self.dataInputParams.input_features,
                 input_features,
                 out_features,
                 kernel_size=kernel_size,
@@ -335,7 +365,7 @@ class CnnBirnnModel():
         setattr(cnn_bilstm_model, "hidden_size_lstm", input_features * 2)
 
         rnn_drop_procentages = cnn_birnn_trial_params.rnn_drop_procentages
-       
+
         if use_gru_instead_of_lstm:
             setattr(
                 cnn_bilstm_model,
@@ -372,8 +402,3 @@ class CnnBirnnModel():
         cnn_bilstm_model.apply(self._weights_init)
 
         return cnn_bilstm_model
-
-
-
-
-                

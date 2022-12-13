@@ -6,6 +6,9 @@ import time
 import tqdm
 import torchmetrics
 
+# use for crossentropy classification because the output is a vector of probabilities that hardly can be compared with the target vector of labels when one-hot encoded makes these integers from 0 to 14 (15 classes)
+LABEL_SMOOTHING = 0.015
+
 # Default constants
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -21,7 +24,7 @@ def train_MLP_Model(
 ):
 
     # Loss and Optimizer
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=LABEL_SMOOTHING)
 
     losses = []
     losses_epoch = []
@@ -115,7 +118,9 @@ def test_mlp(model, test_loader):
 
         assert not torch.isnan(outputs).any()
 
-        loss_fn = torch.nn.CrossEntropyLoss(reduction="sum")
+        loss_fn = torch.nn.CrossEntropyLoss(
+            reduction="sum", label_smoothing=LABEL_SMOOTHING
+        )
         loss_fn = loss_fn.to(DEVICE)
 
         loss = loss_fn(outputs, target)
@@ -150,7 +155,9 @@ def test_mlp_backup(model, test_loader):
 
         assert not torch.isnan(outputs).any()
 
-        loss_fn = torch.nn.CrossEntropyLoss(reduction="sum")
+        loss_fn = torch.nn.CrossEntropyLoss(
+            reduction="sum", label_smoothing=LABEL_SMOOTHING
+        )
         loss_fn = loss_fn.to(DEVICE)
 
         loss = loss_fn(outputs, target)

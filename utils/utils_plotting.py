@@ -3,28 +3,40 @@ import torch
 import matplotlib.pyplot as plt
 
 
+def plot_scatter_values(data: list, label_y="data"):
+    plt.plot(
+        data,
+        color="blue",
+        marker="o",
+        mfc="black",
+        linestyle="dashed",
+    )  # plot the data
+    plt.xticks(range(0, len(data), 1))  # set the tick frequency on x-axis
 
-def plot_scatter_values(data:list, label_y = 'data'):
-    plt.plot(data, color='blue', marker='o',mfc='black', linestyle='dashed', ) #plot the data
-    plt.xticks(range(0,len(data), 1)) #set the tick frequency on x-axis
+    plt.ylabel(label_y)  # set the label for y axis
+    plt.xlabel("epochs")  # set the label for x-axis
+    plt.title("Plotting " + label_y)  # set the title of the graph
+    plt.show()  # display the graph
 
-    plt.ylabel(label_y) #set the label for y axis
-    plt.xlabel('epochs') #set the label for x-axis
-    plt.title("Plotting "+label_y) #set the title of the graph
-    plt.show() #display the graph
-    
 
-# plot float values of the form : 0.0004 
-def plot_float_values(values, label_y = 'Scheduler learning history'):
+# plot float values of the form : 0.0004
+def plot_float_values(values, label_y="Scheduler learning history"):
     import plotly.graph_objects as go
     import plotly.io as pio
-    pio.renderers.default = 'notebook+jupyterlab'
+
+    pio.renderers.default = "notebook+jupyterlab"
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=list(range(0, len(values))), y=values, mode='lines+markers', name='lines+markers'))
-    fig.update_layout(title='Plot of '+label_y, xaxis_title='x', yaxis_title=label_y)
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(0, len(values))),
+            y=values,
+            mode="lines+markers",
+            name="lines+markers",
+        )
+    )
+    fig.update_layout(title="Plot of " + label_y, xaxis_title="x", yaxis_title=label_y)
     fig.show()
-    
-    
+
 
 def plot_trainning_eval(
     minibatch_losses,
@@ -181,7 +193,10 @@ def _plotEvaluationResults(
     plot_multiple_trainning_evals(
         evals_list=(accuracies_scores, loss_scores),
         num_epochs=len(accuracies_scores),
-        custom_labels_list=(" --" + label + " Accuracies vs Losses", " --" + label + " Losses"),
+        custom_labels_list=(
+            " --" + label + " Accuracies vs Losses",
+            " --" + label + " Losses",
+        ),
     )
 
     plot_trainning_eval(
@@ -191,7 +206,10 @@ def _plotEvaluationResults(
         custom_label=" " + label,
     )
     plot_trainning_eval(
-        loss_scores, num_epochs=len(loss_scores), type_plot="Losses", custom_label=" " + label
+        loss_scores,
+        num_epochs=len(loss_scores),
+        type_plot="Losses",
+        custom_label=" " + label,
     )
 
     plot_trainning_eval(
@@ -208,23 +226,17 @@ def _plotEvaluationResults(
     )
 
 
+def _plotEvaluationResults2(accuracies_scores, loss_scores, f1_scores, auroc_scores):
+    plt.subplot(211)  # the first subplot in the first figure
+    plot_scatter_values(accuracies_scores, label_y="accuracies")
+    plt.subplot(212)
+    plot_scatter_values(loss_scores, label_y="losses")
+    plt.subplot(211)
+    plot_scatter_values(f1_scores, label_y="F1-scores")
+    plt.subplot(212)
+    plot_scatter_values(auroc_scores, label_y="Auroc_scores")
 
-def _plotEvaluationResults2(
-    accuracies_scores,
-    loss_scores,
-    f1_scores,
-    auroc_scores
-):
-    plt.subplot(211)             # the first subplot in the first figure
-    plot_scatter_values(accuracies_scores, label_y = 'accuracies')
-    plt.subplot(212) 
-    plot_scatter_values(loss_scores, label_y = 'losses')
-    plt.subplot(211) 
-    plot_scatter_values(f1_scores, label_y = 'F1-scores')
-    plt.subplot(212) 
-    plot_scatter_values(auroc_scores, label_y = 'Auroc_scores')
-    
-    
+
 def plotEvaluationResults(
     accuracies_scores,
     loss_scores,
@@ -234,16 +246,14 @@ def plotEvaluationResults(
 ):
     if type(accuracies_scores[0]) is torch.Tensor:
         accuracies_scores = transferTensorsToDevice(accuracies_scores, device="cpu")
-        
-    elif type(loss_scores[0]) is torch.Tensor:  
+
+    elif type(loss_scores[0]) is torch.Tensor:
         loss_scores = transferTensorsToDevice(loss_scores, device="cpu")
-    
-    elif type(f1_scores[0]) is torch.Tensor:  
+
+    elif type(f1_scores[0]) is torch.Tensor:
         f1_scores = transferTensorsToDevice(f1_scores, device="cpu")
-    
-    elif type(auroc_scores[0]) is torch.Tensor:  
+
+    elif type(auroc_scores[0]) is torch.Tensor:
         auroc_scores = transferTensorsToDevice(auroc_scores, device="cpu")
 
-    _plotEvaluationResults2(
-        accuracies_scores, loss_scores, f1_scores, auroc_scores
-    )
+    _plotEvaluationResults2(accuracies_scores, loss_scores, f1_scores, auroc_scores)

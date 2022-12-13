@@ -138,10 +138,12 @@ def load_datasets(load_for_testing=False, n_rows=None):
 
 # load_for_testing: load a small part of the dataset for testing,debuging
 # the code
-X_train, X_test, Y_train, Y_test, labels_dict = load_datasets(load_for_testing=True, n_rows=1500)
+X_train, X_test, Y_train, Y_test, labels_dict = load_datasets(
+    load_for_testing=True, n_rows=1500
+)
 
 # load the whole datasets available
-#X_train, X_test, Y_train, Y_test, labels_dict  = load_datasets()
+# X_train, X_test, Y_train, Y_test, labels_dict  = load_datasets()
 
 # scaler = StandardScaler()
 scaler = MinMaxScaler()
@@ -208,7 +210,7 @@ sampler = torch.utils.data.WeightedRandomSampler(
 
 
 batch_size = 32
-# use num_workers declared when the code is run on the cloud and it runs 
+# use num_workers declared when the code is run on the cloud and it runs
 """train_loader = DataLoader(
     dataset=train_dataset,
     batch_size=batch_size,

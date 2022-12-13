@@ -11,6 +11,10 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 num_groups = 4
 
+# use for crossentropy classification because the output is a vector of probabilities that hardly can be compared with the target vector of labels when one-hot encoded makes these integers from 0 to 14 (15 classes)
+LABEL_SMOOTHING = 0.015
+
+
 # model that takes long to train: more than 600 minutes
 
 
@@ -134,7 +138,7 @@ def get_stats():
 def train_CNN_BILSTM_Model(cnn_bilstm_model, optimizer, trainloader, MAX_EPOCHS):
 
     # Loss and Optimizer
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=LABEL_SMOOTHING)
 
     cnn_bilstm_model.to(DEVICE)
     cnn_bilstm_model.train()
@@ -187,7 +191,9 @@ def test_CNN_BILSTM_model(model, test_loader):
 
         assert not torch.isnan(outputs).any()
 
-        loss_fn = torch.nn.CrossEntropyLoss(reduction="sum")
+        loss_fn = torch.nn.CrossEntropyLoss(
+            reduction="sum", label_smoothing=LABEL_SMOOTHING
+        )
         loss_fn = loss_fn.to(DEVICE)
 
         loss = loss_fn(outputs, target)

@@ -20,6 +20,7 @@ def ddp_setup(rank, world_size):
     os.environ["MASTER_PORT"] = "12355"
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
+
 class Trainer:
     def __init__(
         self,
@@ -45,7 +46,9 @@ class Trainer:
 
     def _run_epoch(self, epoch):
         b_sz = len(next(iter(self.train_data))[0])
-        print(f"[GPU{self.gpu_id}] Epoch {epoch} | Batchsize: {b_sz} | Steps: {len(self.train_data)}")
+        print(
+            f"[GPU{self.gpu_id}] Epoch {epoch} | Batchsize: {b_sz} | Steps: {len(self.train_data)}"
+        )
         self.train_data.sampler.set_epoch(epoch)
         for source, targets in self.train_data:
             source = source.to(self.gpu_id)
@@ -78,26 +81,30 @@ def prepare_dataloader(dataset: Dataset, batch_size: int):
         batch_size=batch_size,
         pin_memory=True,
         shuffle=False,
-        sampler=DistributedSampler(dataset)
+        sampler=DistributedSampler(dataset),
     )
 
 
-def main(rank: int, world_size: int, save_every: int, total_epochs: int, batch_size: int):
+def main(
+    rank: int, world_size: int, save_every: int, total_epochs: int, batch_size: int
+):
     ddp_setup(rank, world_size)
     dataset, model, optimizer = load_train_objs()
     train_data = prepare_dataloader(dataset, batch_size)
-    
+
     trainer = Trainer(model, train_data, optimizer, rank, save_every)
     trainer.train(total_epochs)
     destroy_process_group()
 
 
 if __name__ == "__main__":
-    
+
     world_size = torch.cuda.device_count()
-    
-    total_epochs=5
-    save_every=3
-    batch_size=4
-    
-    mp.spawn(main, args=(world_size, save_every, total_epochs, batch_size), nprocs=world_size)
+
+    total_epochs = 5
+    save_every = 3
+    batch_size = 4
+
+    mp.spawn(
+        main, args=(world_size, save_every, total_epochs, batch_size), nprocs=world_size
+    )

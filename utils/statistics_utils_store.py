@@ -3,7 +3,6 @@ import torch
 from collections import OrderedDict
 
 
-
 class StatisticsSaver(object):
     def __init__(self):
 
@@ -57,5 +56,3 @@ class StatisticsSaver(object):
 
     def save_total_training_time(self, total_time):
         self.total_traininng_time.append(total_time)
-
-
